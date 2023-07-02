@@ -1,6 +1,6 @@
-import os
-import random
-import math
+# import os
+# import random
+# import math
 import pygame
 from os import listdir
 from os.path import isfile, join
@@ -78,6 +78,7 @@ class Player(pygame.sprite.Sprite):
         self.jump_count = 0
         self.hit = False
         self.hit_count = 0
+        self.sprite = None
 
     def make_hit(self):
         self.hit = True
@@ -129,7 +130,7 @@ class Player(pygame.sprite.Sprite):
         self.jump_count = 0
 
     def hit_head(self):
-        self.count = 0
+        self.fall_count = 0
         self.y_vel *= -1
 
     def update_sprite(self):
@@ -242,7 +243,7 @@ def handle_vertical_collision(player, objects, dy):
     collided_objects = []
     for obj in objects:
         if pygame.sprite.collide_mask(player, obj):
-            if dy > 0:
+            if dy >= 0 and (player.rect.right > obj.rect.left):
                 player.rect.bottom = obj.rect.top
                 player.landed()
             elif dy < 0:
@@ -293,7 +294,7 @@ def handle_move(player, objects):
             player.make_hit()
 
 
-def main(window):
+def main(win):
     clock = pygame.time.Clock()
     background, bg_image = get_background("Blue.png")
 
@@ -321,7 +322,7 @@ def main(window):
                 run = False
                 break
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE and player.jump_count < 2:
+                if (event.key == pygame.K_SPACE or event.key == pygame.K_UP) and player.jump_count < 2:
                     player.jump()
 
         # We handle movement before we draw
@@ -330,7 +331,7 @@ def main(window):
         handle_move(player, objects)
 
         # Drawing methods
-        draw(window, background, bg_image, player, objects, offset_x)
+        draw(win, background, bg_image, player, objects, offset_x)
 
         if ((player.rect.right - offset_x >= WIDTH - scroll_area_width) and player.x_vel > 0) \
                 or ((player.rect.left - offset_x <= scroll_area_width) and player.x_vel < 0):
