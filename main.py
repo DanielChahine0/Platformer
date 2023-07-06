@@ -50,12 +50,25 @@ def load_sprite_sheets(dir1, dir2, width, height, direction=False):
     return all_sprites
 
 
-def get_block(size):
+def get_block(size, name):
     path = join("assets", "Terrain", "Terrain.png")
     image = pygame.image.load(path).convert_alpha()
-    surface = pygame.Surface((size, size), pygame.SRCALPHA, 32)
-    rect = pygame.Rect(96, 0, size, size)
-    surface.blit(image, (0, 0), rect)
+
+    if name == "Rock":
+        surface = pygame.Surface((64, 64), pygame.SRCALPHA, 32)
+        rect = pygame.Rect(96*2+16, 64+16, 32, 32)
+        surface.blit(image, (0, 0), rect)
+
+    elif name == "Gold_plate":
+        surface = pygame.Surface((64, 64), pygame.SRCALPHA, 32)
+        rect = pygame.Rect(96 * 3-16, 128, 64, 64)
+        surface.blit(image, (0, 0), rect)
+
+    else:
+        surface = pygame.Surface((size, size), pygame.SRCALPHA, 32)
+        rect = pygame.Rect(96, 0, size, size)
+        surface.blit(image, (0, 0), rect)
+
     return pygame.transform.scale2x(surface)
 
 
@@ -63,7 +76,7 @@ def get_block(size):
 class Player(pygame.sprite.Sprite):
     COLOR = (255, 0, 0)
     GRAVITY = 1
-    SPRITES = load_sprite_sheets("MainCharacters", "MaskDude", 32, 32, True)
+    SPRITES = load_sprite_sheets("MainCharacters", "VirtualGuy", 32, 32, True)
     ANIMATION_DELAY = 5
 
     def __init__(self, x, y, width, height):
@@ -177,9 +190,12 @@ class Object(pygame.sprite.Sprite):
 
 
 class Block(Object):
-    def __init__(self, x, y, size):
-        super().__init__(x, y, size, size)
-        block = get_block(size)
+    def __init__(self, x, y, size, name="Terrain"):
+        if name == "Gold_plate":
+            super().__init__(x, y, size+64, size)
+        else:
+            super().__init__(x, y, size, size)
+        block = get_block(size, name)
         self.image.blit(block, (0, 0))
         self.mask = pygame.mask.from_surface(self.image)
 
@@ -294,36 +310,117 @@ def handle_move(player, objects):
             player.make_hit()
 
 
+def add_backdoor_wall(block_size, lista):
+
+    for i in range(15):
+        lista.append(Block(-64, HEIGHT - i * block_size, block_size, "Rock"))
+        lista.append(Block(-64 * 2, HEIGHT - i * block_size, block_size, "Rock"))
+        lista.append(Block(-64 * 3, HEIGHT - i * block_size, block_size, "Rock"))
+
+
+def generate_floor():
+    block_size = 96
+
+    list_of_blocks = []
+    GAP = 10
+    LEVEL = 3
+
+    # The initial 3 blocks
+    for i in range(0, LEVEL):
+        list_of_blocks.append(Block(i * block_size, HEIGHT - block_size, block_size))
+
+    for i in range(LEVEL+GAP, LEVEL*3+GAP):
+        list_of_blocks.append(Block(i * block_size, HEIGHT - block_size, block_size))
+
+    for i in range(17+7, 17+14):
+        list_of_blocks.append(Block(i * block_size, HEIGHT - block_size, block_size))
+
+    for i in range(31+7, 31+14):
+        list_of_blocks.append(Block(i * block_size, HEIGHT - block_size, block_size))
+
+    add_backdoor_wall(64, list_of_blocks)
+
+    return list_of_blocks
+
+
+def generate_traps():
+    pass
+
+
+def generate_obstacles():
+    pass
+
+
+def generate_gold_plates1():
+
+    gold_plates = []
+
+    f = open("assets/txtfiles/Gold_plates.txt", "r")
+    for x in f:
+        numbers = x.split(",")
+        x = int(numbers[0])
+        y = int(numbers[1])
+        gold_plates.append(Block(x, y, 32, "Gold_plate"))
+
+    return gold_plates
+
+
 def main(win):
     clock = pygame.time.Clock()
-    background, bg_image = get_background("Blue.png")
+    background, bg_image = get_background("Yellow.png")
 
     block_size = 96
 
     offset_x = 0
-    scroll_area_width = 150
+    scroll_area_width = 200
+    ticks = 0
 
     # Creating a player
-    player = Player(100, 100, 50, 50)
+    player = Player(100, 400, 50, 50)
     fire = Fire(100, HEIGHT-block_size-64, 16, 32)
     fire.on()
-    floor = [Block(i*block_size, HEIGHT - block_size, block_size)
-             for i in range(-WIDTH//block_size, (WIDTH*2)//block_size)]
-    objects = [*floor, Block(0, HEIGHT-block_size*2, block_size), Block(block_size*4, block_size*3, block_size), fire]
+    # floor = [Block(i*block_size, HEIGHT - block_size, block_size)
+    #          for i in range(-WIDTH//block_size, (WIDTH*2)//block_size)]
+    floor = generate_floor()
+    gold_plates = generate_gold_plates1()
+
+    objects = [*floor,
+               *gold_plates
+               # Block(0, HEIGHT-block_size*2, block_size),
+               # Block(block_size*4, block_size*3, block_size),
+               # fire
+               ]
 
     # Event loop
     run = True
     while run:
+
         clock.tick(FPS)
+        ticks += 1
 
         # Check the events of the user
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 run = False
                 break
             if event.type == pygame.KEYDOWN:
                 if (event.key == pygame.K_SPACE or event.key == pygame.K_UP) and player.jump_count < 2:
                     player.jump()
+                if event.key == pygame.K_d:
+                    offset_x += 300
+                if event.key == pygame.K_a:
+                    offset_x -= 300
+
+        if ticks % 50 == 0:
+            floor = generate_floor()
+            gold_plates = generate_gold_plates1()
+
+            objects = [*floor,
+                       *gold_plates
+                       # Block(0, HEIGHT-block_size*2, block_size),
+                       # Block(block_size*4, block_size*3, block_size),
+                       # fire
+                       ]
 
         # We handle movement before we draw
         player.loop(FPS)
