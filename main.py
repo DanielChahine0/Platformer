@@ -174,6 +174,16 @@ class Player(pygame.sprite.Sprite):
     def draw(self, win, offset_x):
         win.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
 
+    def die(self):
+        self.rect.x = 100
+        self.rect.y = 400
+        self.fall_count = 0
+        self.hit_count = 0
+        self.animation_count = 0
+        self.jump_count = 0
+        self.x_vel = 0
+        self.y_vel = 0
+
 
 # OBJECT CLASS - for blocks
 class Object(pygame.sprite.Sprite):
@@ -287,7 +297,7 @@ def collide(player, objects, dx):
     return collided_object
 
 
-def handle_move(player, objects):
+def handle_move(player, objects, offset_x):
     keys = pygame.key.get_pressed()
 
     # stop moving the player if there is no key pressed
@@ -365,6 +375,14 @@ def generate_gold_plates1():
     return gold_plates
 
 
+def reset():
+    print("LOST")
+
+
+def loose():
+    reset()
+
+
 def main(win):
     clock = pygame.time.Clock()
     background, bg_image = get_background("Yellow.png")
@@ -372,7 +390,7 @@ def main(win):
     block_size = 96
 
     offset_x = 0
-    scroll_area_width = 200
+    scroll_area_width = 250
     ticks = 0
 
     # Creating a player
@@ -411,21 +429,21 @@ def main(win):
                 if event.key == pygame.K_a:
                     offset_x -= 300
 
-        if ticks % 50 == 0:
-            floor = generate_floor()
-            gold_plates = generate_gold_plates1()
-
-            objects = [*floor,
-                       *gold_plates
-                       # Block(0, HEIGHT-block_size*2, block_size),
-                       # Block(block_size*4, block_size*3, block_size),
-                       # fire
-                       ]
+        # if ticks % 50 == 0:
+        #     floor = generate_floor()
+        #     gold_plates = generate_gold_plates1()
+        #
+        #     objects = [*floor,
+        #                *gold_plates
+        #                # Block(0, HEIGHT-block_size*2, block_size),
+        #                # Block(block_size*4, block_size*3, block_size),
+        #                # fire
+        #                ]
 
         # We handle movement before we draw
         player.loop(FPS)
         fire.loop()
-        handle_move(player, objects)
+        handle_move(player, objects, offset_x)
 
         # Drawing methods
         draw(win, background, bg_image, player, objects, offset_x)
@@ -433,6 +451,11 @@ def main(win):
         if ((player.rect.right - offset_x >= WIDTH - scroll_area_width) and player.x_vel > 0) \
                 or ((player.rect.left - offset_x <= scroll_area_width) and player.x_vel < 0):
             offset_x += player.x_vel
+
+        if player.rect.top > HEIGHT + 20:
+            offset_x = 0
+            player.die()
+            loose()
 
     # Quit the program
     pygame.quit()
