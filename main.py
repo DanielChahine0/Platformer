@@ -80,7 +80,7 @@ class Player(pygame.sprite.Sprite):
     COLOR = (255, 0, 0)
     GRAVITY = 1
     SPRITES = load_sprite_sheets("MainCharacters", "NinjaFrog", 32, 32, True)
-    ANIMATION_DELAY = 3
+    ANIMATION_DELAY = 5
 
     def __init__(self, x, y, width, height):
         super().__init__()
@@ -181,7 +181,7 @@ class Player(pygame.sprite.Sprite):
         win.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
 
     def die(self):
-        self.rect.x = 100
+        self.rect.x = 1500
         self.rect.y = 400
         self.fall_count = 0
         self.hit_count = 0
@@ -247,7 +247,7 @@ class Fire(Object):
 
 
 class Fruit(Object):
-    ANIMATION_DELAY = 5
+    ANIMATION_DELAY = 3
 
     def __init__(self, x, y, width, height):
         super().__init__(x, y, width, height, "fruit")
@@ -326,11 +326,13 @@ def handle_vertical_collision(player, objects, dy):
             if dy >= 0 and (player.rect.right > obj.rect.left):
                 player.rect.bottom = obj.rect.top
                 player.landed()
+                collided_objects.append(obj)
+                break
             elif dy < 0:
                 player.rect.top = obj.rect.bottom
                 player.hit_head()
-
-            collided_objects.append(obj)
+                collided_objects.append(obj)
+                break
 
     return collided_objects
 
@@ -357,6 +359,18 @@ def handle_move(player, objects):
     # stop moving the player if there is no key pressed
     player.x_vel = 0
 
+    # Check vertical collision with the fruit
+    for fruit in objects:
+        if isinstance(fruit, Fruit) and pygame.sprite.collide_mask(player, fruit):
+            # Handle collision with fruit
+            fruit_rect = fruit.rect
+            player_rect = player.rect
+
+            # Check if the collision is from top or bottom
+            if (player_rect.bottom > fruit_rect.top and player.y_vel < 0) or \
+                    (player_rect.top < fruit_rect.bottom and player.y_vel > 0):
+                objects.remove(fruit)
+
     collide_left = collide(player, objects, -PLAYER_VEL * 2)
     collide_right = collide(player, objects, PLAYER_VEL * 2)
 
@@ -369,10 +383,11 @@ def handle_move(player, objects):
 
     to_check = [*vertical_collide, collide_left, collide_right, ]
 
+    # Check horizontal collision
     for obj in to_check:
         if obj and obj.name == "fruit":
-            # objects.remove(obj)
-            pass
+            objects.remove(obj)
+
 
 def add_backdoor_wall(block_size, lista):
     for i in range(15):
@@ -468,9 +483,13 @@ def main(win):
         *fruits,
     ]
 
+    offset_x = 1500
+    player.die()
+    
     # Event loop
     run = True
     while run:
+
         # Set a fixed number of frames per second
         clock.tick(FPS)
 
@@ -516,6 +535,9 @@ def main(win):
                     player.change_char("PinkMan")
                 elif event.key == pygame.K_4:
                     player.change_char("VirtualGuy")
+                elif event.key == pygame.K_s:
+                    offset_x = 1500
+                    player.die()
 
         # We handle movement before we draw
         player.loop(FPS)
@@ -526,8 +548,6 @@ def main(win):
         for fruit in fruits:
             fruit.loop()
 
-
-
         # Drawing methods
         draw(win, background, bg_image, player, objects, offset_x)
 
@@ -536,7 +556,7 @@ def main(win):
             offset_x += player.x_vel
 
         if player.rect.top > HEIGHT + 20:
-            offset_x = 0
+            offset_x = 1500
             player.die()
             loose()
 
