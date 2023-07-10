@@ -410,11 +410,9 @@ def generate_floor():
     for i in range(LEVEL + GAP, LEVEL * 3 + GAP):
         list_of_blocks.append(Block(i * block_size, HEIGHT - block_size, block_size))
 
-    for i in range(17 + 7, 17 + 14):
+    for i in range(46, 52):
         list_of_blocks.append(Block(i * block_size, HEIGHT - block_size, block_size))
 
-    for i in range(31 + 7, 31 + 14):
-        list_of_blocks.append(Block(i * block_size, HEIGHT - block_size, block_size))
 
     add_backdoor_wall(64, list_of_blocks)
 
