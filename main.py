@@ -181,7 +181,7 @@ class Player(pygame.sprite.Sprite):
         win.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
 
     def die(self):
-        self.rect.x = 1500
+        self.rect.x = 100
         self.rect.y = 400
         self.fall_count = 0
         self.hit_count = 0
@@ -413,7 +413,6 @@ def generate_floor():
     for i in range(46, 52):
         list_of_blocks.append(Block(i * block_size, HEIGHT - block_size, block_size))
 
-
     add_backdoor_wall(64, list_of_blocks)
 
     return list_of_blocks
@@ -480,9 +479,6 @@ def main(win):
         *gold_plates,
         *fruits,
     ]
-
-    offset_x = 1500
-    player.die()
     
     # Event loop
     run = True
@@ -534,7 +530,7 @@ def main(win):
                 elif event.key == pygame.K_4:
                     player.change_char("VirtualGuy")
                 elif event.key == pygame.K_s:
-                    offset_x = 1500
+                    offset_x = 0
                     player.die()
 
         # We handle movement before we draw
@@ -554,7 +550,7 @@ def main(win):
             offset_x += player.x_vel
 
         if player.rect.top > HEIGHT + 20:
-            offset_x = 1500
+            offset_x = 0
             player.die()
             loose()
 
