@@ -8,6 +8,8 @@ from os.path import isfile, join
 # Initializing pygame
 pygame.init()
 pygame.display.set_caption("Platformer")
+score_font = pygame.font.SysFont("Comic Sans", 40)
+SCORE = 0
 
 # -------------- VARIABLES --------------
 BG_COLOR = (255, 255, 255)
@@ -307,7 +309,7 @@ def get_background(name):
     return tiles, image
 
 
-def draw(surface, background, bg_image, player, objects, offset_x):
+def draw(surface, background, bg_image, player, objects, offset_x, score):
     for tile in background:
         surface.blit(bg_image, tile)
 
@@ -315,6 +317,8 @@ def draw(surface, background, bg_image, player, objects, offset_x):
         obj.draw(surface, offset_x)
 
     player.draw(surface, offset_x)
+
+    display_score(score)
 
     pygame.display.update()
 
@@ -353,6 +357,11 @@ def collide(player, objects, dx):
     return collided_object
 
 
+def increase_score():
+    global SCORE
+    SCORE += 1
+
+
 def handle_move(player, objects):
     keys = pygame.key.get_pressed()
 
@@ -370,6 +379,7 @@ def handle_move(player, objects):
             if (player_rect.bottom > fruit_rect.top and player.y_vel < 0) or \
                     (player_rect.top < fruit_rect.bottom and player.y_vel > 0):
                 objects.remove(fruit)
+                increase_score()
 
     collide_left = collide(player, objects, -PLAYER_VEL * 2)
     collide_right = collide(player, objects, PLAYER_VEL * 2)
@@ -387,6 +397,7 @@ def handle_move(player, objects):
     for obj in to_check:
         if obj and obj.name == "fruit":
             objects.remove(obj)
+            increase_score()
 
 
 def add_backdoor_wall(block_size, lista):
@@ -421,11 +432,12 @@ def generate_floor():
 def generate_fruits():
     list_of_fruits = []
 
-    apple1 = Fruit(200, 400, 32, 32)
-    banana2 = Fruit(200, 500, 32, 32)
-
-    list_of_fruits.append(apple1)
-    list_of_fruits.append(banana2)
+    f = open("assets/txtfiles/Fruits.txt", "r")
+    for x in f:
+        numbers = x.split(",")
+        x = int(numbers[0])
+        y = int(numbers[1])
+        list_of_fruits.append(Fruit(x, y, 32, 32))
 
     return list_of_fruits
 
@@ -455,6 +467,20 @@ def loose():
     reset()
 
 
+def display_score(score):
+    score_text = score_font.render(str(score), True, "black")
+
+    margin = 10
+
+    path = join("assets", "block.png")
+    size = 75
+    bg_block = pygame.transform.scale(pygame.image.load(path), (size*2, size))
+    window.blit(bg_block, (margin, margin))
+
+    window.blit(score_text, (margin + (bg_block.get_width()//2 - score_text.get_width()//2),
+                             margin + (bg_block.get_height()//2 - score_text.get_height()//2)))
+
+
 def main(win):
     clock = pygame.time.Clock()
     background, bg_image = get_background("Blue.png")
@@ -479,7 +505,9 @@ def main(win):
         *gold_plates,
         *fruits,
     ]
-    
+
+    # Font set up
+
     # Event loop
     run = True
     while run:
@@ -543,8 +571,9 @@ def main(win):
             fruit.loop()
 
         # Drawing methods
-        draw(win, background, bg_image, player, objects, offset_x)
+        draw(win, background, bg_image, player, objects, offset_x, SCORE)
 
+        # Check if the player gets too far on the left or right
         if ((player.rect.right - offset_x >= WIDTH - scroll_area_width) and player.x_vel > 0) \
                 or ((player.rect.left - offset_x <= scroll_area_width) and player.x_vel < 0):
             offset_x += player.x_vel
