@@ -9,7 +9,12 @@ from os.path import isfile, join
 pygame.init()
 pygame.display.set_caption("Platformer")
 score_font = pygame.font.SysFont("Comic Sans", 40)
+pygame.mouse.set_cursor(pygame.cursors.broken_x)
+trash = pygame.image.load(join("assets", "heart.png"))
+HEART_SIZE = 55
+HEART = pygame.transform.scale(trash, (HEART_SIZE, HEART_SIZE))
 SCORE = 0
+LIVES = 3
 
 # -------------- VARIABLES --------------
 BG_COLOR = (255, 255, 255)
@@ -19,7 +24,7 @@ FPS = 60
 
 PLAYER_VEL = 5
 
-window = pygame.display.set_mode((WIDTH, HEIGHT))
+window = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 
 
 # Function that flips the character depending on what it looks at
@@ -302,14 +307,18 @@ def get_background(name):
     _, _, width, height = image.get_rect()
     tiles = []
 
-    for i in range(WIDTH // width + 1):
-        for j in range(HEIGHT // height + 1):
+    for i in range(1500 // width + 1):
+        for j in range(1200 // height + 1):
             pos = (i * width, j * height)
             tiles.append(pos)
     return tiles, image
 
 
-def draw(surface, background, bg_image, player, objects, offset_x, score):
+def draw_heart(x_margin_right):
+    window.blit(HEART, (WIDTH-((x_margin_right+1)*50), 0))
+
+
+def draw(surface, background, bg_image, player, objects, offset_x, score, lives):
     for tile in background:
         surface.blit(bg_image, tile)
 
@@ -319,6 +328,9 @@ def draw(surface, background, bg_image, player, objects, offset_x, score):
     player.draw(surface, offset_x)
 
     display_score(score)
+
+    for i in range(lives):
+        draw_heart(i)
 
     pygame.display.update()
 
@@ -432,18 +444,23 @@ def generate_floor():
 def generate_fruits():
     list_of_fruits = []
 
+    f = open("assets/txtfiles/Gold_plates.txt", "r")
+    for x in f:
+        numbers = x.split(",")
+        x = int(numbers[0])+96/2-32
+        y = int(numbers[1])-64
+        list_of_fruits.append(Fruit(x, y, 32, 32))
+    f.close()
+
     f = open("assets/txtfiles/Fruits.txt", "r")
     for x in f:
         numbers = x.split(",")
         x = int(numbers[0])
         y = int(numbers[1])
         list_of_fruits.append(Fruit(x, y, 32, 32))
+    f.close()
 
     return list_of_fruits
-
-
-def generate_obstacles():
-    pass
 
 
 def generate_gold_plates1():
@@ -455,16 +472,30 @@ def generate_gold_plates1():
         x = int(numbers[0])
         y = int(numbers[1])
         gold_plates.append(Block(x, y, 32, "Gold_plate"))
+    f.close()
 
     return gold_plates
 
 
-def reset():
-    print("LOST")
+def end_game():
+    global LIVES
+
+    floor = generate_floor()
+    gold_plates = generate_gold_plates1()
+    fruits = [*generate_fruits()]
+    objects = [*floor,
+               *gold_plates,
+               *fruits,
+               ]
+
+    LIVES = 3
+
+    return objects
 
 
-def loose():
-    reset()
+def lose():
+    global LIVES
+    LIVES -= 1
 
 
 def display_score(score):
@@ -472,7 +503,7 @@ def display_score(score):
 
     margin = 10
 
-    path = join("assets", "block.png")
+    path = join("assets", "Cloud.png")
     size = 75
     bg_block = pygame.transform.scale(pygame.image.load(path), (size*2, size))
     window.blit(bg_block, (margin, margin))
@@ -486,10 +517,13 @@ def main(win):
     background, bg_image = get_background("Blue.png")
 
     offset_x = 0
-    scroll_area_width = 250
+    scroll_area_width = window.get_width()*0.2
 
     # Creating a player
-    player = Player(100, 500, 50, 50)
+    SPAWNPOINT = (100, 500)
+
+    x, y = SPAWNPOINT
+    player = Player(x, y, 50, 50)
 
     # Structure
     floor = generate_floor()
@@ -506,8 +540,6 @@ def main(win):
         *fruits,
     ]
 
-    # Font set up
-
     # Event loop
     run = True
     while run:
@@ -520,7 +552,7 @@ def main(win):
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 run = False
                 break
-            if event.type == pygame.KEYDOWN:
+            elif event.type == pygame.KEYDOWN:
                 if (event.key == pygame.K_SPACE or event.key == pygame.K_UP) and player.jump_count < 2:
                     player.jump()
                 elif event.key == pygame.K_d:
@@ -530,10 +562,10 @@ def main(win):
                 elif event.key == pygame.K_u:
                     floor = generate_floor()
                     gold_plates = generate_gold_plates1()
-                    fruits = generate_fruits()
+                    fruits = [*generate_fruits()]
                     objects = [*floor,
                                *gold_plates,
-                               *fruits
+                               *fruits,
                                ]
                 elif event.key == pygame.K_KP1:
                     background, bg_image = get_background("Blue.png")
@@ -560,6 +592,26 @@ def main(win):
                 elif event.key == pygame.K_s:
                     offset_x = 0
                     player.die()
+                elif event.key == pygame.K_e:
+                    f = open("assets/txtfiles/Fruits.txt", "w")
+                    f.write("")
+                    f.close()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                f = open("assets/txtfiles/Fruits.txt", "a")
+                x, y = pygame.mouse.get_pos()
+                line = str(x-32+offset_x)+","+str(y-32)
+                f.write(line)
+                f.write("\n")
+                f.close()
+
+                f = open("assets/txtfiles/Fruits.txt", "r")
+
+                for x in f:
+                    numbers = x.split(",")
+                    x = int(numbers[0])
+                    y = int(numbers[1])
+                    objects.append(Fruit(x, y, 32, 32))
+                f.close()
 
         # We handle movement before we draw
         player.loop(FPS)
@@ -567,21 +619,26 @@ def main(win):
         handle_move(player, objects)
 
         # Handle the animation of the fruits
-        for fruit in fruits:
-            fruit.loop()
+        # for obj in objects:
+        #     if obj.name == "fruit":
+        #         obj.loop()
 
         # Drawing methods
-        draw(win, background, bg_image, player, objects, offset_x, SCORE)
+        draw(win, background, bg_image, player, objects, offset_x, SCORE, LIVES)
 
         # Check if the player gets too far on the left or right
-        if ((player.rect.right - offset_x >= WIDTH - scroll_area_width) and player.x_vel > 0) \
+        if ((player.rect.right - offset_x >= window.get_width() - scroll_area_width) and player.x_vel > 0) \
                 or ((player.rect.left - offset_x <= scroll_area_width) and player.x_vel < 0):
             offset_x += player.x_vel
 
         if player.rect.top > HEIGHT + 20:
             offset_x = 0
             player.die()
-            loose()
+            if LIVES > 1:
+                lose()
+            else:
+                objects = end_game()
+                SPAWNPOINT = (100, 500)
 
     # Quit the program
     pygame.quit()
